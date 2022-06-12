@@ -1,0 +1,84 @@
+from flask import Flask, abort, request, render_template
+import numpy as np
+import pandas as pd
+from nltk.corpus import stopwords
+stop = set(stopwords.words('english'))
+stop.update(['.', ',', '"', "'", '?', '!', ':', ';', '(', ')', '[', ']', '{', '}',''])
+from nltk.stem import WordNetLemmatizer
+
+comfort_data = pd.read_csv('food_choices.csv')
+tes_data = pd.read_csv('zomato.csv', encoding='latin-1')
+tes_data = tes_data.loc[(tes_data['Country Code'] == 1) & (tes_data['City'] == 'New Delhi'), :]
+tes_data = tes_data.loc[tes_data['Longitude'] != 0, :]
+tes_data = tes_data.loc[tes_data['Latitude'] != 0, :]
+tes_data = tes_data.loc[tes_data['Latitude'] < 29] # clearing out invalid outlier
+tes_data = tes_data.loc[tes_data['Rating text'] != 'Not rated']
+tes_data['Cuisines'] = tes_data['Cuisines'].astype(str)
+
+def comfort(mood):
+  lemmatizer = WordNetLemmatizer()
+  foodcount = {}
+  for i in range(124):
+    temp = [temps.strip().replace('.','').replace(',','').lower() for temps in str(comfort_data["comfort_food_reasons"][i]).split(' ') if temps.strip() not in stop ]
+    if mood in temp:
+      foodtemp = [lemmatizer.lemmatize(temps.strip().replace('.','').replace(',','').lower()) for temps in str(comfort_data["comfort_food"][i]).split(',') if temps.strip() not in stop ]
+      for a in foodtemp:
+        if a not in foodcount.keys():
+          foodcount[a] = 1 
+        else:
+          foodcount[a] += 1
+  data = []
+  data = sorted(foodcount, key=foodcount.get, reverse=True)
+  return data
+
+def find_my_comfort_food(mood):
+  topn = []
+  topn = search_comfort(mood) #function create dictionary only for particular mood
+  return topn[:3]
+
+app = Flask(__name__)
+
+@app.route('/', methods=['GET'])
+def home():
+  return render_template('index.html')
+
+@app.route('/find', methods=['GET'])
+def find_restaurant():
+  mood = request.args.get('mood')
+  result = find_my_comfort_food(mood)
+  result_str = 'You should eat {}, {}, or {}.'.format(result[0], result[1], result[2])
+  food_to_cuisine_map = {
+    "pizza": "pizza",
+    "ice cream": "ice cream",
+    "chicken wings": "mughlai",
+    "chinese": "chinese",
+    "chip": "bakery",
+    "chocolate": "bakery",
+    "candy": "bakery",
+    "mcdonalds": "burger",
+    "burger": "burger",
+    "cooky": "bakery",
+    "mac and cheese": "american",
+    "pasta": "italian",
+    "soup": "chinese",
+    "dark chocolate": "bakery",
+    "terra chips" : "bakery",
+    "reese's cups(dark chocolate)": "bakery"
+  }
+  restaurants_list = []
+  for item in result:
+    restaurants = tes_data[tes_data.Cuisines.str.contains(food_to_cuisine_map[item], case=False)].sort_values(by='Aggregate rating', ascending=False).head(3)
+    hotel(restaurants.iloc[0])
+    hotel(restaurants.iloc[1])
+     .iloc[2])
+  return render_template('result.html', result = result_str, mood = mood, restaurants1 = restaurants_list[:3], restaurants2 = restaurants_list[3:6], restaurants3 = restaurants_list[6:])
+
+rom_data['Rating category'] = rom_data['Rating text'].map({'Not rated': -1, 'Poor':0, 'Average':2, 'Good':3, 'Very Good':4, 'Excellent':5})
+tmp = rom_data['Aggregate rating'].map(np.round)
+a = np.full(tmp.shape[0], False, dtype = bool)
+((tmp - rom_data['Rating category']).map(np.round)).value_counts()
+syc_check = rom_data[['Aggregate rating', 'Rating category', 'Votes']].copy()
+syc_check['distorted'] = (rom_data['Aggregate rating'] - rom_data['Rating category']).map(np.round)
+syc_check['diff'] = syc_check['Aggregate rating'] - syc_check['Rating category']
+rom_data = rom_data.loc[syc_check['distorted'] != 2, :]
+rom_data['Rating category'] = rom_data['Aggregate rating'].round(0).astype(int)
